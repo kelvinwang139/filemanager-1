@@ -12,6 +12,7 @@ split_ext = os.path.splitext
 
 UPLOAD_FOLDER = '/home/wushuyi/userfiles'
 ROOT_FOLDER = '/home/wushuyi'
+SERVICE_PATH = "http://192.168.0.107:5000"
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
 
@@ -19,10 +20,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
-def addfile(file=None):
+def addfile(file=None, currentpath=None):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        file.save(os.path.join(ROOT_FOLDER + currentpath, filename))
         return filename
 
 
@@ -38,11 +39,11 @@ def getinfo(path=None, getsize=True, req=None):
         'Error': '',
         'Code': 0,
         'Properties': {
-            'Date Created': '',
-            'Date Modified': '',
-            'Width': '',
-            'Height': '',
-            'Size': ''
+            'Date Created': None,
+            'Date Modified': None,
+            'Width': None,
+            'Height': None,
+            'Size': None
         }
     }
 
@@ -53,7 +54,11 @@ def getinfo(path=None, getsize=True, req=None):
         return thefile
 
     if os.path.isdir(path):
-        thefile['File Type'] = 'Directory'
+        thefile['File Type'] = 'dir'
+
+        if thefile['Path'][-1] != '/':
+            thefile['Path'] += '/'
+
     else:
         thefile['File Type'] = ext = split_ext(path)[1][1:]
 
@@ -66,10 +71,11 @@ def getinfo(path=None, getsize=True, req=None):
             previewPath = 'images/fileicons/' + ext.upper + '.png'
             thefile['Preview'] = previewPath if path_exists('../../' + previewPath) else 'images/fileicons/default.png'
 
-    thefile['Properties']['Date Created'] = os.path.getctime(path)
-    thefile['Properties']['Date Modified'] = os.path.getmtime(path)
-    if getsize:
-        thefile['Properties']['Size'] = os.path.getsize(path)
+        thefile['Properties']['Date Created'] = os.path.getctime(path)
+        thefile['Properties']['Date Modified'] = os.path.getmtime(path)
+        if getsize:
+            thefile['Properties']['Size'] = os.path.getsize(path)
+        thefile['Preview'] = SERVICE_PATH + thefile['Preview']
 
     return thefile
 
@@ -79,12 +85,13 @@ def getfolder(path=None, getsizes=True, req=None):
     filelist = os.listdir(path)
     for i in filelist:
         file = os.path.join(path, i)
-        result[file.split(ROOT_FOLDER)[1]] = getinfo(path=file, getsize=getsizes)
+        res = getinfo(path=file, getsize=getsizes)
+        result[res['Path']] = res
     return result
 
 
 def rename(old=None, new=None, req=None):
-    if os.path.isdir(old):
+    if old[-1] == '/':
         old = old[:-1]
 
     oldname = os.path.basename(old)
@@ -98,6 +105,7 @@ def rename(old=None, new=None, req=None):
     os.rename(ROOT_FOLDER + old, ROOT_FOLDER + newpath)
 
     result = {
+        'Code': 0,
         'Old Path': old,
         'Old Name': oldname,
         'New Path': newpath,
@@ -147,4 +155,4 @@ def download(path=None, req=None):
     name = os.path.basename(path)
 
     return send_file(filename_or_fp=ROOT_FOLDER + path,
-              attachment_filename=name)
+                     attachment_filename=name)

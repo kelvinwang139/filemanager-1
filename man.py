@@ -75,7 +75,7 @@ def filemanager():
             file = request.files.get('newfile')
             config = request.args.get('config')
             currentpath = request.form.get('currentpath')
-            filename = addfile(file)
+            filename = addfile(file=file, currentpath=currentpath)
             return '<textarea>{"Path":"' + currentpath + '","Name":"' + filename + '","Error":"","Code":0}</textarea>'
     return ''
 
